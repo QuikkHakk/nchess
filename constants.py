@@ -1,0 +1,2 @@
+BLACK = "b"
+WHITE = "w"

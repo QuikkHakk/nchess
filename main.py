@@ -17,11 +17,13 @@ class MainView(QMainWindow):
 
         self.setWindowTitle("NChess")
         self.setWindowIcon(QIcon("rsc/icon.png"))
-        self.resize(800, 600)
+        self.resize(1160, 900)
 
         self.center()
 
         self.show()
+
+        self.board.startpos()
 
     def layout(self):
         layout = BorderLayout()
@@ -53,6 +55,10 @@ class MainView(QMainWindow):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+
+    def closeEvent(self, event):
+        self.board.engine_handler.stockfish.quit()
+        self.board.engine_handler.leela.quit()
 
 app = QApplication(sys.argv)        
 v = MainView()
