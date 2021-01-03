@@ -5,16 +5,16 @@ from PyQt4.QtSvg import QSvgRenderer
 import chess
 
 from engine import EngineHandler
-
 from arrow import draw_arrow
 
 from math import floor
 from constants import BLACK, WHITE
 
 class ChessBoard(QWidget):
-    def __init__(self):
+    def __init__(self, main_view):
         super().__init__()
         self.board_svg = QSvgRenderer("assets/boards/blue.svg")
+        self.main_view = main_view
         self.board = chess.Board()
         self.piece_images = {}
         self.ranks = "87654321"
@@ -23,7 +23,11 @@ class ChessBoard(QWidget):
         self.board_size = 0
         self.tile_size = 0
         self.selected = None
-        self.engine_handler = EngineHandler()
+        self.engine_handler = EngineHandler(self)
+        self.best_move = None
+        self.show_best_move = True
+        self.move_history = [chess.STARTING_FEN]
+        self.move_index = 0
 
         for c in "QRPBNK":
             self.piece_images[WHITE + c] = QSvgRenderer("assets/pieces/w" + c + ".svg")
@@ -36,6 +40,7 @@ class ChessBoard(QWidget):
         painter = QPainter()
 
         painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)
 
         self.board_svg.render(painter, QRectF(0, 0, self.board_size, self.board_size))
         
@@ -67,8 +72,20 @@ class ChessBoard(QWidget):
                     bounds = QRectF(f * self.tile_size, r * self.tile_size, self.tile_size, self.tile_size)
                     renderer.render(painter, bounds)
 
-        painter.setBrush(QBrush(Qt.red, Qt.SolidPattern))
-        painter.drawPolygon(draw_arrow(200, 400, 400, 200))
+        if self.best_move != None and self.show_best_move:
+            bm = self.best_move
+            fx, fy = self.coordsofsquare(bm.from_square)
+            tx, ty = self.coordsofsquare(bm.to_square)
+            
+            fx = fx * self.tile_size + self.tile_size / 2
+            fy = fy * self.tile_size + self.tile_size / 2
+            tx = tx * self.tile_size + self.tile_size / 2
+            ty = ty * self.tile_size + self.tile_size / 2
+
+            painter.setBrush(QBrush(QColor(0, 92, 153, 130), Qt.SolidPattern))
+            painter.setPen(Qt.NoPen)
+
+            painter.drawPolygon(draw_arrow(fx, fy, tx, ty))
 
         painter.end()
 
@@ -109,11 +126,12 @@ class ChessBoard(QWidget):
         return move in lm
 
     def makemove(self, move):
-        self.engine_handler.bestmove(self.board)
-    
         self.board.push(move)
         self.selected = None
-
+        self.engine_handler.analyze(self.board)
+        self.move_history.append(self.fen())
+        self.move_index += 1
+   
     def makemoveiflegal(self, x, y):
         lm = self.board.legal_moves
         sx = self.selected[0]
@@ -137,14 +155,59 @@ class ChessBoard(QWidget):
         piece = self.board.piece_at(s)
         return piece
 
+    def coordsofsquare(self, sq):
+        return (chess.square_file(sq), 7 - chess.square_rank(sq))
+
     def coordstopos(self, x, y):
         return self.files[x] + self.ranks[y]
 
     def startpos(self):
-        self.board.set_fen(chess.STARTING_FEN)
+        self.loadfen(chess.STARTING_FEN)
+
+    def _loadfen(self, fen):
+        self.board.set_fen(fen)
+        self.engine_handler.analyze(self.board)
 
     def loadfen(self, fen):
+        self.move_history = [fen]
+        self.move_index = 0
         self.board.set_fen(fen)
+        self.engine_handler.analyze(self.board)
 
     def fen(self):
         return self.board.fen()
+
+    def show_best_move_changed(self, state):
+        self.show_best_move = state == Qt.Checked
+    
+    def change_engine(self, engine):
+        self.engine_handler.change_engine(engine)
+
+    def set_best_move(self, best_move):
+        self.best_move = best_move
+
+    def redo(self):
+        self.move_index += 1
+        if self.move_index >= len(self.move_history):
+            self.move_index = len(self.move_history) - 1
+        else:
+            self._loadfen(self.move_history[self.move_index])
+
+    def undo(self):
+        self.move_index -= 1
+        if self.move_index < 0:
+            self.move_index = 0
+        else:
+            self._loadfen(self.move_history[self.move_index])
+
+    def set_thoughts(self, pv):
+        if len(pv) > 0:
+            thoughts = "Engine thoughts: " + pv[0].uci()
+            if len(pv) > 1:
+                for m in range(1, len(pv)):
+                    move = pv[m].uci()
+                    thoughts += "->" + move
+        self.main_view.engine_thoughts.setText(thoughts)
+
+    def set_score(self, score):
+        self.main_view.game_score.setText("Score: " + score)

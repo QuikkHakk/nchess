@@ -10,9 +10,9 @@ def draw_arrow(fx, fy, tx, ty):
   angle = -degrees(asin(dy / c))
 
   hs = 70
-  fl = 20
+  fl = 15
   sl = c - hs
-  tl = 40
+  tl = 30
 
   first_p = None
   second_p = None
