@@ -2,6 +2,8 @@ import sys
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
+from chess import STARTING_FEN
+
 from borderlayout import BorderLayout
 from board import ChessBoard
 
@@ -39,6 +41,7 @@ class MainView(QMainWindow):
         engine_selector = QComboBox()
         engine_selector.addItem("Stockfish")
         engine_selector.addItem("Leela")
+        engine_selector.addItem("Komodo")
         engine_selector.currentIndexChanged.connect(lambda:self.board.change_engine(engine_selector.currentText()))
         vbox.addWidget(engine_selector)
 
@@ -63,6 +66,17 @@ class MainView(QMainWindow):
         reset_btn.setText("Reset")
         reset_btn.clicked.connect(lambda:self.board.startpos())
         vbox.addWidget(reset_btn)
+
+        self.fen_field = QLineEdit()
+        self.fen_field.setText(STARTING_FEN)
+        self.fen_field.setMinimumWidth(200)
+        self.fen_field.setMaximumWidth(200)
+        vbox.addWidget(self.fen_field)
+
+        set_fen_btn = QPushButton()
+        set_fen_btn.setText("Set fen")
+        set_fen_btn.clicked.connect(lambda:self.board.loadfen(self.fen_field.text()))
+        vbox.addWidget(set_fen_btn)
 
         self.engine_thoughts = QLabel()
         self.engine_thoughts.setText("...")
@@ -101,6 +115,7 @@ class MainView(QMainWindow):
     def closeEvent(self, event):
         self.board.engine_handler.stockfish.quit()
         self.board.engine_handler.leela.quit()
+        self.board.engine_handler.komodo.quit()
 
 app = QApplication(sys.argv)        
 v = MainView()

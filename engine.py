@@ -8,6 +8,7 @@ class EngineHandler(object):
     def __init__(self, game):
         self.stockfish = SimpleEngine.popen_uci("engines/stockfish/stockfish.exe")
         self.leela = SimpleEngine.popen_uci("engines/stockfish/stockfish.exe")
+        self.komodo = SimpleEngine.popen_uci("engines/komodo/komodo.exe")
         self.engine = self.stockfish
         self.game = game
         self.stops = {}
@@ -35,17 +36,23 @@ class EngineHandler(object):
                     if score.is_mate():
                         self.game.set_score("Mate in " + str(score.relative.mate()))
                     else:
-                        sc = score.wdl(model="lichess").relative.expectation()
-                        self.game.set_score(str(sc))
+                        sc = score.relative.score()
+                        self.game.set_score(str(sc / 100))
                 if moves != None:
                     move = moves[0]
                     self.game.set_best_move(move)
                     self.game.set_thoughts(moves)
 
+    def stop_current(self):
+        self.stops[self.analysis_count-1] = True
+
     def change_engine(self, to):
         if to == "Leela":
             self.engine = self.leela
-            print("Now using leela engine")
+            print("Now using Leela engine")
         if to == "Stockfish":
             self.engine = self.stockfish 
-            print("Now using stockfish engine")
+            print("Now using Stockfish engine")
+        if to == "Komodo":
+            self.engine = self.komodo 
+            print("Now using Komodo engine")

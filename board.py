@@ -130,6 +130,7 @@ class ChessBoard(QWidget):
         self.selected = None
         self.engine_handler.analyze(self.board)
         self.move_history.append(self.fen())
+        self.main_view.fen_field.setText(self.fen())
         self.move_index += 1
    
     def makemoveiflegal(self, x, y):
@@ -167,12 +168,14 @@ class ChessBoard(QWidget):
     def _loadfen(self, fen):
         self.board.set_fen(fen)
         self.engine_handler.analyze(self.board)
+        self.main_view.fen_field.setText(self.board.fen())
 
     def loadfen(self, fen):
         self.move_history = [fen]
         self.move_index = 0
         self.board.set_fen(fen)
         self.engine_handler.analyze(self.board)
+        self.main_view.fen_field.setText(self.board.fen())
 
     def fen(self):
         return self.board.fen()
@@ -182,6 +185,8 @@ class ChessBoard(QWidget):
     
     def change_engine(self, engine):
         self.engine_handler.change_engine(engine)
+        self.engine_handler.stop_current()
+        self.engine_handler.analyze(self.board)
 
     def set_best_move(self, best_move):
         self.best_move = best_move
