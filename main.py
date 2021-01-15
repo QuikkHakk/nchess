@@ -42,6 +42,7 @@ class MainView(QMainWindow):
         engine_selector.addItem("Stockfish")
         engine_selector.addItem("Leela")
         engine_selector.addItem("Komodo")
+        engine_selector.addItem("NCE")
         engine_selector.currentIndexChanged.connect(lambda:self.board.change_engine(engine_selector.currentText()))
         vbox.addWidget(engine_selector)
 
@@ -54,12 +55,12 @@ class MainView(QMainWindow):
 
         next_btn = QPushButton()
         next_btn.setText("Next")
-        next_btn.clicked.connect(lambda:self.board.redo())
+        next_btn.clicked.connect(lambda:self.board.next_move())
         vbox.addWidget(next_btn)
 
         undo_btn = QPushButton()
         undo_btn.setText("Back")
-        undo_btn.clicked.connect(lambda:self.board.undo())
+        undo_btn.clicked.connect(lambda:self.board.back_move())
         vbox.addWidget(undo_btn)
 
         reset_btn = QPushButton()
@@ -112,10 +113,17 @@ class MainView(QMainWindow):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+    def mousePressEvent(self, event):
+        self.board.mouse_press(event)
+        
+    def mouseReleaseEvent(self, event):
+        self.board.mouse_release(event)
+
     def closeEvent(self, event):
         self.board.engine_handler.stockfish.quit()
         self.board.engine_handler.leela.quit()
         self.board.engine_handler.komodo.quit()
+        self.board.engine_handler.nce.quit()
 
 app = QApplication(sys.argv)        
 v = MainView()

@@ -26,8 +26,11 @@ class ChessBoard(QWidget):
         self.engine_handler = EngineHandler(self)
         self.best_move = None
         self.show_best_move = True
-        self.move_history = [chess.STARTING_FEN]
-        self.move_index = 0
+        self.move_history = []
+        self.arrows = []
+        self.dragging = False
+        self.dragX = 0
+        self.dragY = 0
 
         for c in "QRPBNK":
             self.piece_images[WHITE + c] = QSvgRenderer("assets/pieces/w" + c + ".svg")
@@ -72,6 +75,17 @@ class ChessBoard(QWidget):
                     bounds = QRectF(f * self.tile_size, r * self.tile_size, self.tile_size, self.tile_size)
                     renderer.render(painter, bounds)
 
+        for arrow in self.arrows:
+            fx = arrow[0] * self.tile_size + self.tile_size / 2
+            fy = arrow[1] * self.tile_size + self.tile_size / 2
+            tx = arrow[2] * self.tile_size + self.tile_size / 2
+            ty = arrow[3] * self.tile_size + self.tile_size / 2
+
+            painter.setBrush(QBrush(QColor(34, 139, 34, 130), Qt.SolidPattern))
+            painter.setPen(Qt.NoPen)
+
+            painter.drawPolygon(draw_arrow(fx, fy, tx, ty, 40, 10))
+
         if self.best_move != None and self.show_best_move:
             bm = self.best_move
             fx, fy = self.coordsofsquare(bm.from_square)
@@ -85,15 +99,47 @@ class ChessBoard(QWidget):
             painter.setBrush(QBrush(QColor(0, 92, 153, 130), Qt.SolidPattern))
             painter.setPen(Qt.NoPen)
 
-            painter.drawPolygon(draw_arrow(fx, fy, tx, ty))
+            painter.drawPolygon(draw_arrow(fx, fy, tx, ty, 70, 15))
 
         painter.end()
 
         self.update()
 
-    def mouseReleaseEvent(self, event):
+    def mouse_press(self, event):
         if event.button() == Qt.RightButton:
-            self.selected = None
+            x = event.x()
+            y = event.y()
+            if x <= self.board_size and y <= self.board_size:
+                tx = floor(x / self.tile_size)
+                ty = floor(y / self.tile_size)
+
+                self.dragging = True
+                self.dragX = tx
+                self.dragY = ty
+            else:
+                self.dragging = False
+                self.arrows.clear()
+
+    def mouse_release(self, event):
+        if event.button() == Qt.RightButton and self.dragging:
+            x = event.x()
+            y = event.y()
+            if x <= self.board_size and y <= self.board_size:
+                tx = floor(x / self.tile_size)
+                ty = floor(y / self.tile_size)
+
+                if self.dragX != tx or self.dragY != ty:
+                    already_arr = False
+                    for arr in self.arrows:
+                        # if arrow already exists, remove it
+                        if arr[0] == self.dragX and arr[1] == self.dragY and arr[2] == tx and arr[3] == ty:
+                            already_arr = True
+                            self.arrows.remove(arr)
+                    if not already_arr:
+                        self.arrows.append((self.dragX, self.dragY, tx, ty))
+            else:
+                self.dragging = False
+
         if event.button() != Qt.LeftButton:
             return
 
@@ -129,9 +175,8 @@ class ChessBoard(QWidget):
         self.board.push(move)
         self.selected = None
         self.engine_handler.analyze(self.board)
-        self.move_history.append(self.fen())
         self.main_view.fen_field.setText(self.fen())
-        self.move_index += 1
+        self.arrows.clear()
    
     def makemoveiflegal(self, x, y):
         lm = self.board.legal_moves
@@ -162,17 +207,28 @@ class ChessBoard(QWidget):
     def coordstopos(self, x, y):
         return self.files[x] + self.ranks[y]
 
+    def _domove(self):
+        mv = self.move_history.pop()
+        if mv != None:
+            self.board.push(mv)
+            self.main_view.fen_field.setText(self.board.fen())
+        self.engine_handler.analyze(self.board)
+        self.arrows.clear()
+
+    def _undomove(self):
+        try:
+            self.move_history.append(self.board.pop())
+        except:
+            pass
+        self.engine_handler.analyze(self.board)
+        self.main_view.fen_field.setText(self.board.fen())
+        self.arrows.clear()
+
     def startpos(self):
         self.loadfen(chess.STARTING_FEN)
 
-    def _loadfen(self, fen):
-        self.board.set_fen(fen)
-        self.engine_handler.analyze(self.board)
-        self.main_view.fen_field.setText(self.board.fen())
-
     def loadfen(self, fen):
-        self.move_history = [fen]
-        self.move_index = 0
+        self.move_history = []
         self.board.set_fen(fen)
         self.engine_handler.analyze(self.board)
         self.main_view.fen_field.setText(self.board.fen())
@@ -191,19 +247,15 @@ class ChessBoard(QWidget):
     def set_best_move(self, best_move):
         self.best_move = best_move
 
-    def redo(self):
-        self.move_index += 1
-        if self.move_index >= len(self.move_history):
-            self.move_index = len(self.move_history) - 1
+    def next_move(self):
+        if len(self.move_history) > 0:
+            self._domove()
         else:
-            self._loadfen(self.move_history[self.move_index])
+            if self.best_move != None:
+                self.makemove(self.best_move)
 
-    def undo(self):
-        self.move_index -= 1
-        if self.move_index < 0:
-            self.move_index = 0
-        else:
-            self._loadfen(self.move_history[self.move_index])
+    def back_move(self):
+        self._undomove()
 
     def set_thoughts(self, pv):
         if len(pv) > 0:

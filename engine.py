@@ -9,6 +9,10 @@ class EngineHandler(object):
         self.stockfish = SimpleEngine.popen_uci("engines/stockfish/stockfish.exe")
         self.leela = SimpleEngine.popen_uci("engines/stockfish/stockfish.exe")
         self.komodo = SimpleEngine.popen_uci("engines/komodo/komodo.exe")
+        self.nce = SimpleEngine.popen_uci("engines/nce/nce.exe")
+
+        self.nce.configure({"bookpath": "./engines/nce/"})
+
         self.engine = self.stockfish
         self.game = game
         self.stops = {}
@@ -56,3 +60,6 @@ class EngineHandler(object):
         if to == "Komodo":
             self.engine = self.komodo 
             print("Now using Komodo engine")
+        if to == "NCE":
+            self.engine = self.nce 
+            print("Now using Niko's Chess engine")

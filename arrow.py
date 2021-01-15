@@ -2,17 +2,15 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from math import *
 
-def draw_arrow(fx, fy, tx, ty):
+def draw_arrow(fx, fy, tx, ty, hs, fl):
   dx = tx - fx
   dy = ty - fy
   c = sqrt(dx * dx + dy * dy)
 
   angle = -degrees(asin(dy / c))
 
-  hs = 70
-  fl = 15
   sl = c - hs
-  tl = 30
+  tl = fl * 2
 
   first_p = None
   second_p = None
